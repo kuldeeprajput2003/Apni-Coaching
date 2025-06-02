@@ -1,41 +1,63 @@
 const User = require('../models/user_model');
 const Password = require('../helper/password');
+const jwt = require('../helper/token');
 
-async function signupPostController(req,res) {
+async function signupPostController(req, res) {
     try {
 
         const { name, email, password, college, year } = req.body;
 
         if (!name || !email || !password || !college || !year) {
-            return res.status(400).json({ 
-                message: 'All fields are required.' 
+            return res.status(400).json({
+                message: 'All fields are required.'
             });
         }
 
         const hashedPassword = await Password.hashPassword(password);
 
         if (!hashedPassword) {
-            return res.status(400).json({ 
-                message: 'Password hashing failed.' 
+            return res.status(400).json({
+                message: 'Password hashing failed.'
             });
         }
+
 
         const user = await User.create({
             name,
             email,
-            password: hashedPassword, 
+            password: hashedPassword,
             college,
             year
         });
 
         if (!user) {
-            return res.status(400).json({ 
-                message: 'User creation failed.' 
+            return res.status(400).json({
+                message: 'User creation failed.'
             });
         }
 
-        res.status(201).json({ 
-            message: 'User created successfully.', 
+        const payload = {
+            name,
+            email,
+            college,
+            year,
+            role: user.role,
+            subscribed: user.subscribed,
+            isVerified: user.isVerified,
+        };
+
+        const token = jwt.generateToken(payload);
+
+        if (!token) {
+            return res.status(500).json({
+                message: 'Token generation failed.'
+            });
+        }
+
+        res.cookie('token', token);
+
+        res.status(201).json({
+            message: 'User created successfully.',
             id: user._id,
             name: user.name,
             email: user.email,
@@ -47,35 +69,60 @@ async function signupPostController(req,res) {
         });
 
     } catch (error) {
-        res.status(500).json({ 
-            message: 'Internal server error: '+ error.message 
-        });        
+        res.status(500).json({
+            message: 'Internal server error: ' + error.message
+        });
     }
 }
 
-async function signinPostController(req,res) {
+async function signinPostController(req, res) {
     try {
         const { email, password } = req.body;
 
         if (!email || !password) {
-            return res.status(400).json({ 
-                message: 'Email and password are required.' 
+            return res.status(400).json({
+                message: 'Email and password are required.'
             });
         }
 
         const user = await User.findOne({ email });
 
-        const isPasswordValid = await Password.comparePassword(password, user.password);
-
-
-        if (!user || !isPasswordValid) {
-            return res.status(401).json({ 
-                message: 'Invalid email or password.' 
+        if (!user) {
+            return res.status(401).json({
+                message: 'Invalid email or password.'
             });
         }
 
-        res.status(200).json({ 
-            message: 'User signed in successfully.', 
+        const isPasswordValid = await Password.comparePassword(password, user.password);
+
+        if (!isPasswordValid) {
+            return res.status(401).json({
+                message: 'Invalid email or password.'
+            });
+        }
+
+        const payload = {
+            name: user.name,
+            email: user.email,
+            college: user.college,
+            year: user.year,
+            role: user.role,
+            subscribed: user.subscribed,
+            isVerified: user.isVerified,
+        };
+
+        const token = jwt.generateToken(payload);
+
+        if (!token) {
+            return res.status(500).json({
+                message: 'Token generation failed.'
+            });
+        }
+
+        res.cookie('token', token);
+
+        res.status(200).json({
+            message: 'User signed in successfully.',
             id: user._id,
             name: user.name,
             email: user.email,
@@ -85,11 +132,11 @@ async function signinPostController(req,res) {
             subscribed: user.subscribed,
             isVerified: user.isVerified,
         });
-        
+
     } catch (error) {
-        res.status(500).json({ 
-            message: 'Internal server error: '+ error.message 
-        });        
+        res.status(500).json({
+            message: 'Internal server error: ' + error.message
+        });
     }
 }
 
