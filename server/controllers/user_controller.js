@@ -1,6 +1,7 @@
 const User = require('../models/user_model');
 const Password = require('../helper/password');
 const jwt = require('../helper/token');
+const sendMail = require('../helper/mailer');
 
 async function signupPostController(req, res) {
     try {
@@ -35,6 +36,9 @@ async function signupPostController(req, res) {
                 message: 'User creation failed.'
             });
         }
+
+        const msg = `<p>Hii ${name}, please <a href="${process.env.LOCAL_HOST}/email/verify/?_id=${userCreated._id}">Verify</a> your Email.</p>`;
+        sendMail(email, "Email Verification", msg); 
 
         const payload = {
             name,
