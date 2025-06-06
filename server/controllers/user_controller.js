@@ -34,10 +34,10 @@ async function signupPostController(req, res) {
         if (!user) {
             return res.status(400).json({
                 message: 'User creation failed.'
-            });
+            }); 
         }
 
-        const msg = `<p>Hii ${name}, please <a href="${process.env.LOCAL_HOST}/email/verify/?_id=${userCreated._id}">Verify</a> your Email.</p>`;
+        const msg = `<p>Hii ${name}, please <a href="${process.env.LOCAL_HOST}/user/verify/${user._id}">Verify</a> your Email.</p>`;
         sendMail(email, "Email Verification", msg); 
 
         const payload = {
@@ -61,7 +61,7 @@ async function signupPostController(req, res) {
         res.cookie('token', token);
 
         res.status(201).json({
-            message: 'User created successfully.',
+            message: 'User created successfully. An email has been sent for verification.',
             id: user._id,
             name: user.name,
             email: user.email,
@@ -73,7 +73,7 @@ async function signupPostController(req, res) {
         });
 
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             message: 'Internal server error: ' + error.message
         });
     }
@@ -144,7 +144,37 @@ async function signinPostController(req, res) {
     }
 }
 
+async function verifyGetController(req,res) {
+    try {
+        const id = req.params._id;
+        if(!id){
+            return res.status(400).json({
+                message: 'ID not found'
+            }); 
+        }
+        const user = await User.findById(id)
+        if(!user){
+            return res.status(400).json({
+                message: 'User not found'
+            }); 
+        }
+        if(user.isVerified){
+            return res.status(400).json({
+                message: 'Email already verified'
+            }); 
+        }
+        user.isVerified = true;
+        await user.save();
+        return res.status(200).send("Email verified successfully");
+    } catch (error) {
+        return res.status(500).json({
+            message: 'Internal server error: ' + error.message
+        });
+    }
+}
+
 module.exports = {
     signupPostController,
     signinPostController,
+    verifyGetController,
 };
